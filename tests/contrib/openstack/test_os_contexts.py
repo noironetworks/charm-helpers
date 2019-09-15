@@ -193,12 +193,15 @@ IDENTITY_SERVICE_RELATION_HTTPS = {
 
 IDENTITY_SERVICE_RELATION_VERSIONED = {
     'api_version': '3',
+    'service_tenant_id': 'svc-proj-id',
+    'service_domain_id': 'svc-dom-id',
 }
 IDENTITY_SERVICE_RELATION_VERSIONED.update(IDENTITY_SERVICE_RELATION_HTTPS)
 
 IDENTITY_CREDENTIALS_RELATION_VERSIONED = {
     'api_version': '3',
-    'service_domain_id': '567890',
+    'service_tenant_id': 'svc-proj-id',
+    'service_domain_id': 'svc-dom-id',
 }
 IDENTITY_CREDENTIALS_RELATION_VERSIONED.update(IDENTITY_CREDENTIALS_RELATION_UNSET)
 
@@ -267,7 +270,16 @@ AMQP_CONFIG = {
 AMQP_OSLO_CONFIG = {
     'oslo-messaging-flags': ("rabbit_max_retries=1"
                              ",rabbit_retry_backoff=1"
-                             ",rabbit_retry_interval=1")
+                             ",rabbit_retry_interval=1"),
+    'oslo-messaging-driver': 'log'
+}
+
+AMQP_NOTIFICATION_FORMAT = {
+    'notification-format': 'both'
+}
+
+AMQP_NOTIFICATIONS_LOGS = {
+    'send-notifications-to-logs': True
 }
 
 AMQP_NOVA_CONFIG = {
@@ -725,7 +737,7 @@ class ContextTests(unittest.TestCase):
     @patch.object(context, 'get_os_codename_install_source')
     def test_shared_db_context_with_data(self, os_codename):
         '''Test shared-db context with all required data'''
-        os_codename.return_value = 'stein'
+        os_codename.return_value = 'queens'
         relation = FakeRelation(relation_data=SHARED_DB_RELATION)
         self.relation_get.side_effect = relation.get
         self.get_address_in_network.return_value = ''
@@ -760,7 +772,7 @@ class ContextTests(unittest.TestCase):
     def test_shared_db_context_with_data_and_access_net_match(self,
                                                               os_codename):
         """Correctly set hostname for access net returns complete context"""
-        os_codename.return_value = 'stein'
+        os_codename.return_value = 'queens'
         relation = FakeRelation(
             relation_data=SHARED_DB_RELATION_ACCESS_NETWORK)
         self.relation_get.side_effect = relation.get
@@ -780,7 +792,7 @@ class ContextTests(unittest.TestCase):
     @patch.object(context, 'get_os_codename_install_source')
     def test_shared_db_context_explicit_relation_id(self, os_codename):
         '''Test shared-db context setting the relation_id'''
-        os_codename.return_value = 'stein'
+        os_codename.return_value = 'queens'
         relation = FakeRelation(relation_data=SHARED_DB_RELATION_ALT_RID)
         self.related_units.return_value = ['mysql-alt/0']
         self.relation_get.side_effect = relation.get
@@ -871,9 +883,9 @@ class ContextTests(unittest.TestCase):
                      'database_type': 'mysql+pymysql'})
 
     @patch.object(context, 'get_os_codename_install_source')
-    def test_shared_db_context_with_params_rocky(self, os_codename):
+    def test_shared_db_context_with_params_pike(self, os_codename):
         '''Test shared-db context with object parameters'''
-        os_codename.return_value = 'rocky'
+        os_codename.return_value = 'pike'
         shared_db = context.SharedDBContext(
             database='quantum', user='quantum', relation_prefix='quantum')
         relation = FakeRelation(relation_data=SHARED_DB_RELATION_NAMESPACED)
@@ -954,7 +966,9 @@ class ContextTests(unittest.TestCase):
         result = postgresql_db()
         self.assertEquals(result['database'], 'quantum')
 
-    def test_identity_service_context_with_data(self):
+    @patch.object(context, 'filter_installed_packages', return_value=[])
+    @patch.object(context, 'os_release', return_value='rocky')
+    def test_identity_service_context_with_data(self, *args):
         '''Test shared-db context with all required data'''
         relation = FakeRelation(relation_data=IDENTITY_SERVICE_RELATION_UNSET)
         self.relation_get.side_effect = relation.get
@@ -974,6 +988,7 @@ class ContextTests(unittest.TestCase):
             'service_protocol': 'http',
             'api_version': '2.0',
         }
+        result.pop('keystone_authtoken')
         self.assertEquals(result, expected)
 
     def test_identity_credentials_context_with_data(self):
@@ -997,7 +1012,9 @@ class ContextTests(unittest.TestCase):
         }
         self.assertEquals(result, expected)
 
-    def test_identity_service_context_with_altname(self):
+    @patch.object(context, 'filter_installed_packages', return_value=[])
+    @patch.object(context, 'os_release', return_value='rocky')
+    def test_identity_service_context_with_altname(self, *args):
         '''Test identity context when using an explicit relation name'''
         relation = FakeRelation(
             relation_data=APIIDENTITY_SERVICE_RELATION_UNSET
@@ -1023,9 +1040,12 @@ class ContextTests(unittest.TestCase):
             'service_protocol': 'http',
             'api_version': '2.0',
         }
+        result.pop('keystone_authtoken')
         self.assertEquals(result, expected)
 
-    def test_identity_service_context_with_cache(self):
+    @patch.object(context, 'filter_installed_packages', return_value=[])
+    @patch.object(context, 'os_release', return_value='rocky')
+    def test_identity_service_context_with_cache(self, *args):
         '''Test shared-db context with signing cache info'''
         relation = FakeRelation(relation_data=IDENTITY_SERVICE_RELATION_UNSET)
         self.relation_get.side_effect = relation.get
@@ -1049,9 +1069,12 @@ class ContextTests(unittest.TestCase):
             'api_version': '2.0',
         }
         self.assertTrue(self.mkdir.called)
+        result.pop('keystone_authtoken')
         self.assertEquals(result, expected)
 
-    def test_identity_service_context_with_data_http(self):
+    @patch.object(context, 'filter_installed_packages', return_value=[])
+    @patch.object(context, 'os_release', return_value='rocky')
+    def test_identity_service_context_with_data_http(self, *args):
         '''Test shared-db context with all required data'''
         relation = FakeRelation(relation_data=IDENTITY_SERVICE_RELATION_HTTP)
         self.relation_get.side_effect = relation.get
@@ -1071,9 +1094,12 @@ class ContextTests(unittest.TestCase):
             'service_protocol': 'http',
             'api_version': '2.0',
         }
+        result.pop('keystone_authtoken')
         self.assertEquals(result, expected)
 
-    def test_identity_service_context_with_data_https(self):
+    @patch.object(context, 'filter_installed_packages', return_value=[])
+    @patch.object(context, 'os_release', return_value='rocky')
+    def test_identity_service_context_with_data_https(self, *args):
         '''Test shared-db context with all required data'''
         relation = FakeRelation(relation_data=IDENTITY_SERVICE_RELATION_HTTPS)
         self.relation_get.side_effect = relation.get
@@ -1093,9 +1119,12 @@ class ContextTests(unittest.TestCase):
             'service_protocol': 'https',
             'api_version': '2.0',
         }
+        result.pop('keystone_authtoken')
         self.assertEquals(result, expected)
 
-    def test_identity_service_context_with_data_versioned(self):
+    @patch.object(context, 'filter_installed_packages', return_value=[])
+    @patch.object(context, 'os_release', return_value='rocky')
+    def test_identity_service_context_with_data_versioned(self, *args):
         '''Test shared-db context with api version supplied from keystone'''
         relation = FakeRelation(
             relation_data=IDENTITY_SERVICE_RELATION_VERSIONED)
@@ -1106,8 +1135,10 @@ class ContextTests(unittest.TestCase):
             'admin_password': 'foo',
             'admin_domain_name': 'admin_domain',
             'admin_tenant_name': 'admin',
-            'admin_tenant_id': None,
-            'admin_domain_id': None,
+            'admin_tenant_id': 'svc-proj-id',
+            'admin_domain_id': 'svc-dom-id',
+            'service_project_id': 'svc-proj-id',
+            'service_domain_id': 'svc-dom-id',
             'admin_user': 'adam',
             'auth_host': 'keystone-host.local',
             'auth_port': '35357',
@@ -1117,6 +1148,7 @@ class ContextTests(unittest.TestCase):
             'service_protocol': 'https',
             'api_version': '3',
         }
+        result.pop('keystone_authtoken')
         self.assertEquals(result, expected)
 
     def test_identity_credentials_context_with_data_versioned(self):
@@ -1142,8 +1174,10 @@ class ContextTests(unittest.TestCase):
         }
         self.assertEquals(result, expected)
 
+    @patch.object(context, 'filter_installed_packages', return_value=[])
+    @patch.object(context, 'os_release', return_value='rocky')
     @patch('charmhelpers.contrib.openstack.context.format_ipv6_addr')
-    def test_identity_service_context_with_ipv6(self, format_ipv6_addr):
+    def test_identity_service_context_with_ipv6(self, format_ipv6_addr, *args):
         '''Test identity-service context with ipv6'''
         relation = FakeRelation(relation_data=IDENTITY_SERVICE_RELATION_HTTP)
         self.relation_get.side_effect = relation.get
@@ -1164,9 +1198,12 @@ class ContextTests(unittest.TestCase):
             'service_protocol': 'http',
             'api_version': '2.0',
         }
+        result.pop('keystone_authtoken')
         self.assertEquals(result, expected)
 
-    def test_identity_service_context_with_missing_relation(self):
+    @patch.object(context, 'filter_installed_packages', return_value=[])
+    @patch.object(context, 'os_release', return_value='rocky')
+    def test_identity_service_context_with_missing_relation(self, *args):
         '''Test shared-db context missing relation data'''
         incomplete_relation = copy(IDENTITY_SERVICE_RELATION_UNSET)
         incomplete_relation['service_password'] = None
@@ -1176,6 +1213,36 @@ class ContextTests(unittest.TestCase):
         result = identity_service()
         self.assertEquals(result, {})
 
+    @patch.object(context, 'filter_installed_packages')
+    @patch.object(context, 'os_release')
+    def test_keystone_authtoken_www_authenticate_uri_stein_apiv3(self, mock_os_release, mock_filter_installed_packages):
+        relation_data = deepcopy(IDENTITY_SERVICE_RELATION_VERSIONED)
+        relation = FakeRelation(relation_data=relation_data)
+        self.relation_get.side_effect = relation.get
+
+        mock_filter_installed_packages.return_value = []
+        mock_os_release.return_value = 'stein'
+
+        identity_service = context.IdentityServiceContext()
+
+        cfg_ctx = identity_service()
+
+        keystone_authtoken = cfg_ctx.get('keystone_authtoken', {})
+
+        expected = collections.OrderedDict((
+            ('auth_type', 'password'),
+            ('www_authenticate_uri', 'https://keystonehost.local:5000/v3'),
+            ('auth_url', 'https://keystone-host.local:35357/v3'),
+            ('project_domain_name', 'admin_domain'),
+            ('user_domain_name', 'admin_domain'),
+            ('project_name', 'admin'),
+            ('username', 'adam'),
+            ('password', 'foo'),
+            ('signing_dir', ''),
+        ))
+
+        self.assertEquals(keystone_authtoken, expected)
+
     def test_amqp_context_with_data(self):
         '''Test amqp context with all required data'''
         relation = FakeRelation(relation_data=AMQP_RELATION)
@@ -1184,6 +1251,7 @@ class ContextTests(unittest.TestCase):
         amqp = context.AMQPContext()
         result = amqp()
         expected = {
+            'oslo_messaging_driver': 'messagingv2',
             'rabbitmq_host': 'rabbithost',
             'rabbitmq_password': 'foobar',
             'rabbitmq_user': 'adam',
@@ -1201,6 +1269,7 @@ class ContextTests(unittest.TestCase):
         amqp = context.AMQPContext(relation_id='amqp-alt:0')
         result = amqp()
         expected = {
+            'oslo_messaging_driver': 'messagingv2',
             'rabbitmq_host': 'rabbitalthost1',
             'rabbitmq_password': 'flump',
             'rabbitmq_user': 'adam',
@@ -1219,6 +1288,7 @@ class ContextTests(unittest.TestCase):
             relation_prefix='nova')
         result = amqp()
         expected = {
+            'oslo_messaging_driver': 'messagingv2',
             'rabbitmq_host': 'rabbithost',
             'rabbitmq_password': 'foobar',
             'rabbitmq_user': 'adam',
@@ -1237,6 +1307,7 @@ class ContextTests(unittest.TestCase):
         amqp = context.AMQPContext(ssl_dir=ssl_dir)
         result = amqp()
         expected = {
+            'oslo_messaging_driver': 'messagingv2',
             'rabbitmq_host': 'rabbithost',
             'rabbitmq_password': 'foobar',
             'rabbitmq_user': 'adam',
@@ -1259,6 +1330,7 @@ class ContextTests(unittest.TestCase):
         amqp = context.AMQPContext()
         result = amqp()
         expected = {
+            'oslo_messaging_driver': 'messagingv2',
             'rabbitmq_host': 'rabbithost',
             'rabbitmq_password': 'foobar',
             'rabbitmq_user': 'adam',
@@ -1280,6 +1352,7 @@ class ContextTests(unittest.TestCase):
         amqp = context.AMQPContext()
         result = amqp()
         expected = {
+            'oslo_messaging_driver': 'messagingv2',
             'clustered': True,
             'rabbitmq_host': relation_data['vip'],
             'rabbitmq_password': 'foobar',
@@ -1300,6 +1373,7 @@ class ContextTests(unittest.TestCase):
         amqp = context.AMQPContext()
         result = amqp()
         expected = {
+            'oslo_messaging_driver': 'messagingv2',
             'rabbitmq_host': 'rabbithost1',
             'rabbitmq_password': 'foobar',
             'rabbitmq_user': 'adam',
@@ -1344,6 +1418,7 @@ class ContextTests(unittest.TestCase):
         amqp = context.AMQPContext()
         result = amqp()
         expected = {
+            'oslo_messaging_driver': 'messagingv2',
             'rabbitmq_host': '[2001:db8:1::1]',
             'rabbitmq_password': 'foobar',
             'rabbitmq_user': 'adam',
@@ -1372,7 +1447,48 @@ class ContextTests(unittest.TestCase):
                 'rabbit_retry_backoff': '1',
                 'rabbit_retry_interval': '1'
             },
+            'oslo_messaging_driver': 'log',
             'transport_url': 'rabbit://adam:foobar@rabbithost:5672/foo'
+        }
+
+        self.assertEquals(result, expected)
+
+    def test_amqp_context_with_notification_format(self):
+        """Test amqp context with notification_format option"""
+        relation = FakeRelation(relation_data=AMQP_RELATION)
+        self.relation_get.side_effect = relation.get
+        AMQP_NOTIFICATION_FORMAT.update(AMQP_CONFIG)
+        self.config.return_value = AMQP_NOTIFICATION_FORMAT
+        amqp = context.AMQPContext()
+        result = amqp()
+        expected = {
+            'oslo_messaging_driver': 'messagingv2',
+            'rabbitmq_host': 'rabbithost',
+            'rabbitmq_password': 'foobar',
+            'rabbitmq_user': 'adam',
+            'rabbitmq_virtual_host': 'foo',
+            'notification_format': 'both',
+            'transport_url': 'rabbit://adam:foobar@rabbithost:5672/foo'
+        }
+
+        self.assertEquals(result, expected)
+
+    def test_amqp_context_with_notifications_to_logs(self):
+        """Test amqp context with send_notifications_to_logs"""
+        relation = FakeRelation(relation_data=AMQP_RELATION)
+        self.relation_get.side_effect = relation.get
+        AMQP_NOTIFICATIONS_LOGS.update(AMQP_CONFIG)
+        self.config.return_value = AMQP_NOTIFICATIONS_LOGS
+        amqp = context.AMQPContext()
+        result = amqp()
+        expected = {
+            'oslo_messaging_driver': 'messagingv2',
+            'rabbitmq_host': 'rabbithost',
+            'rabbitmq_password': 'foobar',
+            'rabbitmq_user': 'adam',
+            'rabbitmq_virtual_host': 'foo',
+            'transport_url': 'rabbit://adam:foobar@rabbithost:5672/foo',
+            'send_notifications_to_logs': True,
         }
 
         self.assertEquals(result, expected)
@@ -1394,6 +1510,15 @@ class ContextTests(unittest.TestCase):
         '''Test empty ceph realtion'''
         relation = FakeRelation(relation_data={})
         self.relation_ids.side_effect = relation.get
+        ceph = context.CephContext()
+        result = ceph()
+        self.assertEquals(result, {})
+
+    def test_ceph_rel_with_no_units(self):
+        '''Test ceph context with missing related units'''
+        relation = FakeRelation(relation_data={})
+        self.relation_ids.side_effect = relation.relation_ids
+        self.related_units.side_effect = []
         ceph = context.CephContext()
         result = ceph()
         self.assertEquals(result, {})
@@ -1426,7 +1551,6 @@ class ContextTests(unittest.TestCase):
         }
         self.assertEquals(result, expected)
         ensure_packages.assert_called_with(['ceph-common'])
-        mkdir.assert_called_with('/etc/ceph')
 
     @patch('os.mkdir')
     @patch.object(context, 'ensure_packages')
@@ -3198,13 +3322,24 @@ class ContextTests(unittest.TestCase):
         mock_config.side_effect = config
         self.assertEquals(context.ExternalPortContext()(), {})
 
+    @patch('charmhelpers.contrib.openstack.context.list_nics')
     @patch('charmhelpers.contrib.openstack.context.config')
-    def test_ext_port_eth(self, mock_config):
+    def test_ext_port_eth(self, mock_config, mock_list_nics):
         config = fake_config({'ext-port': 'eth1010'})
         self.config.side_effect = config
         mock_config.side_effect = config
+        mock_list_nics.return_value = ['eth1010']
         self.assertEquals(context.ExternalPortContext()(),
                           {'ext_port': 'eth1010'})
+
+    @patch('charmhelpers.contrib.openstack.context.list_nics')
+    @patch('charmhelpers.contrib.openstack.context.config')
+    def test_ext_port_eth_non_existent(self, mock_config, mock_list_nics):
+        config = fake_config({'ext-port': 'eth1010'})
+        self.config.side_effect = config
+        mock_config.side_effect = config
+        mock_list_nics.return_value = []
+        self.assertEquals(context.ExternalPortContext()(), {})
 
     @patch('charmhelpers.contrib.openstack.context.is_phy_iface',
            lambda arg: True)
@@ -3351,7 +3486,8 @@ class ContextTests(unittest.TestCase):
         expected_keys = [
             'l2_population', 'enable_dvr', 'enable_l3ha',
             'overlay_network_type', 'network_device_mtu',
-            'enable_qos', 'enable_nsg_logging'
+            'enable_qos', 'enable_nsg_logging', 'global_physnet_mtu',
+            'physical_network_mtus'
         ]
         api_ctxt = context.NeutronAPIContext()()
         for key in expected_keys:
@@ -3360,6 +3496,8 @@ class ContextTests(unittest.TestCase):
         self.assertEquals(api_ctxt['rpc_response_timeout'], 60)
         self.assertEquals(api_ctxt['report_interval'], 30)
         self.assertEquals(api_ctxt['enable_nsg_logging'], False)
+        self.assertEquals(api_ctxt['global_physnet_mtu'], 1500)
+        self.assertIsNone(api_ctxt['physical_network_mtus'])
 
     def setup_neutron_api_context_relation(self, cfg):
         self.relation_ids.return_value = ['neutron-plugin-api:1']
@@ -3412,6 +3550,38 @@ class ContextTests(unittest.TestCase):
             'l2-population': 'True'})
         api_ctxt = context.NeutronAPIContext()()
         self.assertEquals(api_ctxt['extension_drivers'], 'qos,log')
+
+    def test_neutronapicontext_firewall_group_logging_on(self):
+        self.setup_neutron_api_context_relation({
+            'enable-nfg-logging': 'True',
+            'l2-population': 'True'
+        })
+        api_ctxt = context.NeutronAPIContext()()
+        self.assertEquals(api_ctxt['enable_nfg_logging'], True)
+
+    def test_neutronapicontext_firewall_group_logging_off(self):
+        self.setup_neutron_api_context_relation({
+            'enable-nfg-logging': 'False',
+            'l2-population': 'True'
+        })
+        api_ctxt = context.NeutronAPIContext()()
+        self.assertEquals(api_ctxt['enable_nfg_logging'], False)
+
+    def test_neutronapicontext_port_forwarding_on(self):
+        self.setup_neutron_api_context_relation({
+            'enable-port-forwarding': 'True',
+            'l2-population': 'True'
+        })
+        api_ctxt = context.NeutronAPIContext()()
+        self.assertEquals(api_ctxt['enable_port_forwarding'], True)
+
+    def test_neutronapicontext_port_forwarding_off(self):
+        self.setup_neutron_api_context_relation({
+            'enable-port-forwarding': 'False',
+            'l2-population': 'True'
+        })
+        api_ctxt = context.NeutronAPIContext()()
+        self.assertEquals(api_ctxt['enable_port_forwarding'], False)
 
     def test_neutronapicontext_string_converted(self):
         self.setup_neutron_api_context_relation({
@@ -3690,3 +3860,109 @@ class ContextTests(unittest.TestCase):
             'logrotate_count': 'rotate 4',
         }
         self.assertEquals(ctxt, expected_ctxt)
+
+    @patch.object(context, 'os_release')
+    def test_vendordata_static(self, os_release):
+        _vdata = '{"good": "json"}'
+        os_release.return_value = 'rocky'
+        self.config.side_effect = [_vdata, None]
+        ctxt = context.NovaVendorMetadataContext('nova-common')()
+
+        self.assertTrue(ctxt['vendor_data'])
+        self.assertEqual('StaticJSON', ctxt['vendordata_providers'])
+        self.assertNotIn('vendor_data_url', ctxt)
+
+    @patch.object(context, 'os_release')
+    def test_vendordata_dynamic(self, os_release):
+        _vdata_url = 'http://example.org/vdata'
+        os_release.return_value = 'rocky'
+
+        self.config.side_effect = [None, _vdata_url]
+        ctxt = context.NovaVendorMetadataContext('nova-common')()
+
+        self.assertEqual(_vdata_url, ctxt['vendor_data_url'])
+        self.assertEqual('DynamicJSON', ctxt['vendordata_providers'])
+        self.assertFalse(ctxt['vendor_data'])
+
+    @patch.object(context, 'os_release')
+    def test_vendordata_static_and_dynamic(self, os_release):
+        os_release.return_value = 'rocky'
+        _vdata = '{"good": "json"}'
+        _vdata_url = 'http://example.org/vdata'
+
+        self.config.side_effect = [_vdata, _vdata_url]
+        ctxt = context.NovaVendorMetadataContext('nova-common')()
+
+        self.assertTrue(ctxt['vendor_data'])
+        self.assertEqual(_vdata_url, ctxt['vendor_data_url'])
+        self.assertEqual('StaticJSON,DynamicJSON',
+                         ctxt['vendordata_providers'])
+
+    @patch.object(context, 'log')
+    @patch.object(context, 'os_release')
+    def test_vendordata_static_invalid_and_dynamic(self, os_release, log):
+        os_release.return_value = 'rocky'
+        _vdata = '{bad: json}'
+        _vdata_url = 'http://example.org/vdata'
+
+        self.config.side_effect = [_vdata, _vdata_url]
+        ctxt = context.NovaVendorMetadataContext('nova-common')()
+
+        self.assertFalse(ctxt['vendor_data'])
+        self.assertEqual(_vdata_url, ctxt['vendor_data_url'])
+        self.assertEqual('DynamicJSON', ctxt['vendordata_providers'])
+        self.assertTrue(log.called)
+
+    @patch('charmhelpers.contrib.openstack.context.log')
+    @patch.object(context, 'os_release')
+    def test_vendordata_static_and_dynamic_mitaka(self, os_release, log):
+        os_release.return_value = 'mitaka'
+        _vdata = '{"good": "json"}'
+        _vdata_url = 'http://example.org/vdata'
+
+        self.config.side_effect = [_vdata, _vdata_url]
+        ctxt = context.NovaVendorMetadataContext('nova-common')()
+
+        self.assertTrue(log.called)
+        self.assertTrue(ctxt['vendor_data'])
+        self.assertNotIn('vendor_data_url', ctxt)
+        self.assertNotIn('vendordata_providers', ctxt)
+
+    @patch.object(context, 'log')
+    def test_vendordata_json_valid(self, log):
+        _vdata = '{"good": "json"}'
+        self.config.side_effect = [_vdata]
+
+        ctxt = context.NovaVendorMetadataJSONContext('nova-common')()
+
+        self.assertEqual({'vendor_data_json': _vdata}, ctxt)
+        self.assertFalse(log.called)
+
+    @patch.object(context, 'log')
+    def test_vendordata_json_invalid(self, log):
+        _vdata = '{bad: json}'
+        self.config.side_effect = [_vdata]
+
+        ctxt = context.NovaVendorMetadataJSONContext('nova-common')()
+
+        self.assertEqual({'vendor_data_json': '{}'}, ctxt)
+        self.assertTrue(log.called)
+
+    @patch.object(context, 'log')
+    def test_vendordata_json_empty(self, log):
+        self.config.side_effect = [None]
+
+        ctxt = context.NovaVendorMetadataJSONContext('nova-common')()
+
+        self.assertEqual({'vendor_data_json': '{}'}, ctxt)
+        self.assertFalse(log.called)
+
+    @patch.object(context, 'socket')
+    def test_host_info_context(self, _socket):
+        _socket.getfqdn.return_value = 'myhost.mydomain'
+        _socket.gethostname.return_value = 'myhost'
+        ctxt = context.HostInfoContext()()
+        self.assertEqual({
+            'host_fqdn': 'myhost.mydomain',
+            'host': 'myhost'},
+            ctxt)

@@ -5,7 +5,6 @@ from tempfile import mkdtemp
 from shutil import rmtree
 from textwrap import dedent
 
-import apt_pkg
 import imp
 
 from charmhelpers import osplatform
@@ -16,6 +15,7 @@ from tests.helpers import mock_open as mocked_open
 import six
 
 from charmhelpers.core import host
+from charmhelpers.fetch import ubuntu_apt_pkg
 
 
 MOUNT_LINES = ("""
@@ -1766,7 +1766,7 @@ class HelpersTest(TestCase):
         self.assertEqual(host.get_distrib_codename(), 'bionic')
 
     @patch.object(osplatform, 'get_platform')
-    @patch.object(apt_pkg, 'Cache')
+    @patch.object(ubuntu_apt_pkg, 'Cache')
     def test_cmp_pkgrevno_revnos_ubuntu(self, pkg_cache, platform):
         platform.return_value = 'ubuntu'
         imp.reload(host)
@@ -1985,6 +1985,19 @@ class HelpersTest(TestCase):
         check_output.assert_called_with(
             ['dpkg', '--print-architecture']
         )
+
+    @patch('subprocess.check_output')
+    def test_get_system_env(self, check_output):
+        check_output.return_value = ''
+        self.assertEquals(
+            host.get_system_env('aKey', 'aDefault'), 'aDefault')
+        self.assertEquals(host.get_system_env('aKey'), None)
+        check_output.return_value = 'aKey=aValue\n'
+        self.assertEquals(
+            host.get_system_env('aKey', 'aDefault'), 'aValue')
+        check_output.return_value = 'otherKey=shell=wicked\n'
+        self.assertEquals(
+            host.get_system_env('otherKey', 'aDefault'), 'shell=wicked')
 
 
 class TestHostCompator(TestCase):

@@ -160,6 +160,10 @@ class FakeDNS(object):
 
 class OpenStackHelpersTestCase(TestCase):
 
+    def setUp(self):
+        super(OpenStackHelpersTestCase, self).setUp()
+        self.patch(fetch, 'get_apt_dpkg_env', lambda: {})
+
     def _apt_cache(self):
         # mocks out the apt cache
         def cache_get(package):
@@ -300,7 +304,7 @@ class OpenStackHelpersTestCase(TestCase):
     def test_os_codename_from_package(self, mock_snap_install_requested):
         """Test deriving OpenStack codename from an installed package"""
         mock_snap_install_requested.return_value = False
-        with patch('apt_pkg.Cache') as cache:
+        with patch.object(openstack, 'apt_cache') as cache:
             cache.return_value = self._apt_cache()
             for pkg, vers in six.iteritems(FAKE_REPO):
                 # test fake repo for all "installed" packages
@@ -317,7 +321,7 @@ class OpenStackHelpersTestCase(TestCase):
                                                   mock_snap_install_requested):
         """Test deriving OpenStack codename for a poorly versioned package"""
         mock_snap_install_requested.return_value = False
-        with patch('apt_pkg.Cache') as cache:
+        with patch.object(openstack, 'apt_cache') as cache:
             cache.return_value = self._apt_cache()
             openstack.get_os_codename_package('bad-version')
             _e = ('Could not determine OpenStack codename for version 2200.1')
@@ -329,7 +333,7 @@ class OpenStackHelpersTestCase(TestCase):
                                           mock_snap_install_requested):
         """Test deriving OpenStack codename from an unavailable package"""
         mock_snap_install_requested.return_value = False
-        with patch('apt_pkg.Cache') as cache:
+        with patch.object(openstack, 'apt_cache') as cache:
             cache.return_value = self._apt_cache()
             try:
                 openstack.get_os_codename_package('foo')
@@ -346,7 +350,7 @@ class OpenStackHelpersTestCase(TestCase):
             self, mock_snap_install_requested):
         """Test OpenStack codename from an unavailable package is non-fatal"""
         mock_snap_install_requested.return_value = False
-        with patch('apt_pkg.Cache') as cache:
+        with patch.object(openstack, 'apt_cache') as cache:
             cache.return_value = self._apt_cache()
             self.assertEquals(
                 None,
@@ -359,7 +363,7 @@ class OpenStackHelpersTestCase(TestCase):
                                                   mock_snap_install_requested):
         """Test OpenStack codename from an available but uninstalled pkg"""
         mock_snap_install_requested.return_value = False
-        with patch('apt_pkg.Cache') as cache:
+        with patch.object(openstack, 'apt_cache') as cache:
             cache.return_value = self._apt_cache()
             try:
                 openstack.get_os_codename_package('cinder-common', fatal=True)
@@ -374,7 +378,7 @@ class OpenStackHelpersTestCase(TestCase):
             self, mock_snap_install_requested):
         """Test OpenStack codename from avail uninstalled pkg is non fatal"""
         mock_snap_install_requested.return_value = False
-        with patch('apt_pkg.Cache') as cache:
+        with patch.object(openstack, 'apt_cache') as cache:
             cache.return_value = self._apt_cache()
             self.assertEquals(
                 None,
@@ -387,7 +391,7 @@ class OpenStackHelpersTestCase(TestCase):
                                      mock_snap_install_requested):
         """Test deriving OpenStack version from an installed package"""
         mock_snap_install_requested.return_value = False
-        with patch('apt_pkg.Cache') as cache:
+        with patch.object(openstack, 'apt_cache') as cache:
             cache.return_value = self._apt_cache()
             for pkg, vers in six.iteritems(FAKE_REPO):
                 if pkg.startswith('bad-'):
@@ -403,7 +407,7 @@ class OpenStackHelpersTestCase(TestCase):
                                          mock_snap_install_requested):
         """Test deriving OpenStack version from an uninstalled package"""
         mock_snap_install_requested.return_value = False
-        with patch('apt_pkg.Cache') as cache:
+        with patch.object(openstack, 'apt_cache') as cache:
             cache.return_value = self._apt_cache()
             try:
                 openstack.get_os_version_package('foo')
@@ -420,7 +424,7 @@ class OpenStackHelpersTestCase(TestCase):
             self, mock_snap_install_requested):
         """Test OpenStack version from an uninstalled package is non-fatal"""
         mock_snap_install_requested.return_value = False
-        with patch('apt_pkg.Cache') as cache:
+        with patch.object(openstack, 'apt_cache') as cache:
             cache.return_value = self._apt_cache()
             self.assertEquals(
                 None,
@@ -470,7 +474,7 @@ class OpenStackHelpersTestCase(TestCase):
             openstack.configure_installation_source(src)
             ex_cmd = [
                 'add-apt-repository', '--yes', 'ppa:gandelman-a/openstack']
-            mock.assert_called_with(ex_cmd)
+            mock.assert_called_with(ex_cmd, env={})
 
     @patch('subprocess.check_call')
     @patch.object(fetch, 'import_key')
@@ -483,7 +487,7 @@ class OpenStackHelpersTestCase(TestCase):
         _spcc.assert_called_once_with(
             ['add-apt-repository', '--yes',
              'deb http://ubuntu-cloud.archive.canonical.com/ubuntu '
-             'precise-havana main'])
+             'precise-havana main'], env={})
 
     @patch.object(fetch, 'get_distrib_codename')
     @patch(builtin_open)
@@ -504,7 +508,7 @@ class OpenStackHelpersTestCase(TestCase):
         _spcc.assert_called_once_with(
             ['add-apt-repository', '--yes',
              'deb http://archive.ubuntu.com/ubuntu/ precise-proposed '
-             'restricted main multiverse universe'])
+             'restricted main multiverse universe'], env={})
 
     @patch('charmhelpers.fetch.filter_installed_packages')
     @patch('charmhelpers.fetch.apt_install')
@@ -581,7 +585,7 @@ class OpenStackHelpersTestCase(TestCase):
             openstack.configure_installation_source(src)
             cmd = ['add-apt-repository', '-y',
                    'ppa:ubuntu-cloud-archive/folsom-staging']
-            _subp.assert_called_with(cmd)
+            _subp.assert_called_with(cmd, env={})
 
     @patch(builtin_open)
     @patch.object(fetch, 'apt_install')
@@ -1734,7 +1738,7 @@ class OpenStackHelpersTestCase(TestCase):
     def test_os_application_version_set(self,
                                         mock_application_version_set,
                                         mock_os_release):
-        with patch('apt_pkg.Cache') as cache:
+        with patch.object(fetch, 'apt_cache') as cache:
             cache.return_value = self._apt_cache()
             mock_os_release.return_value = 'mitaka'
             openstack.os_application_version_set('neutron-common')

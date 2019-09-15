@@ -84,7 +84,8 @@ from charmhelpers.fetch import (
     SourceConfigError,
     GPGKeyError,
     get_upstream_version,
-    filter_missing_packages
+    filter_missing_packages,
+    ubuntu_apt_pkg as apt,
 )
 
 from charmhelpers.fetch.snap import (
@@ -120,6 +121,7 @@ OPENSTACK_RELEASES = (
     'queens',
     'rocky',
     'stein',
+    'train',
 )
 
 UBUNTU_OPENSTACK_RELEASE = OrderedDict([
@@ -139,6 +141,7 @@ UBUNTU_OPENSTACK_RELEASE = OrderedDict([
     ('bionic', 'queens'),
     ('cosmic', 'rocky'),
     ('disco', 'stein'),
+    ('eoan', 'train'),
 ])
 
 
@@ -159,6 +162,7 @@ OPENSTACK_CODENAMES = OrderedDict([
     ('2018.1', 'queens'),
     ('2018.2', 'rocky'),
     ('2019.1', 'stein'),
+    ('2019.2', 'train'),
 ])
 
 # The ugly duckling - must list releases oldest to newest
@@ -195,6 +199,8 @@ SWIFT_CODENAMES = OrderedDict([
         ['2.18.0', '2.19.0']),
     ('stein',
         ['2.20.0', '2.21.0']),
+    ('train',
+        ['2.22.0']),
 ])
 
 # >= Liberty version->codename mapping
@@ -208,6 +214,7 @@ PACKAGE_CODENAMES = {
         ('17', 'queens'),
         ('18', 'rocky'),
         ('19', 'stein'),
+        ('20', 'train'),
     ]),
     'neutron-common': OrderedDict([
         ('7', 'liberty'),
@@ -218,6 +225,7 @@ PACKAGE_CODENAMES = {
         ('12', 'queens'),
         ('13', 'rocky'),
         ('14', 'stein'),
+        ('15', 'train'),
     ]),
     'cinder-common': OrderedDict([
         ('7', 'liberty'),
@@ -228,6 +236,7 @@ PACKAGE_CODENAMES = {
         ('12', 'queens'),
         ('13', 'rocky'),
         ('14', 'stein'),
+        ('15', 'train'),
     ]),
     'keystone': OrderedDict([
         ('8', 'liberty'),
@@ -238,6 +247,7 @@ PACKAGE_CODENAMES = {
         ('13', 'queens'),
         ('14', 'rocky'),
         ('15', 'stein'),
+        ('16', 'train'),
     ]),
     'horizon-common': OrderedDict([
         ('8', 'liberty'),
@@ -248,6 +258,7 @@ PACKAGE_CODENAMES = {
         ('13', 'queens'),
         ('14', 'rocky'),
         ('15', 'stein'),
+        ('16', 'train'),
     ]),
     'ceilometer-common': OrderedDict([
         ('5', 'liberty'),
@@ -258,6 +269,7 @@ PACKAGE_CODENAMES = {
         ('10', 'queens'),
         ('11', 'rocky'),
         ('12', 'stein'),
+        ('13', 'train'),
     ]),
     'heat-common': OrderedDict([
         ('5', 'liberty'),
@@ -268,6 +280,7 @@ PACKAGE_CODENAMES = {
         ('10', 'queens'),
         ('11', 'rocky'),
         ('12', 'stein'),
+        ('13', 'train'),
     ]),
     'glance-common': OrderedDict([
         ('11', 'liberty'),
@@ -278,6 +291,7 @@ PACKAGE_CODENAMES = {
         ('16', 'queens'),
         ('17', 'rocky'),
         ('18', 'stein'),
+        ('19', 'train'),
     ]),
     'openstack-dashboard': OrderedDict([
         ('8', 'liberty'),
@@ -288,6 +302,7 @@ PACKAGE_CODENAMES = {
         ('13', 'queens'),
         ('14', 'rocky'),
         ('15', 'stein'),
+        ('16', 'train'),
     ]),
 }
 
@@ -428,8 +443,6 @@ def get_os_codename_package(package, fatal=True):
             if package in line:
                 # Second item in list is Version
                 return line.split()[1]
-
-    import apt_pkg as apt
 
     cache = apt_cache()
 
@@ -644,7 +657,6 @@ def openstack_upgrade_available(package):
                          a newer version of package.
     """
 
-    import apt_pkg as apt
     src = config('openstack-origin')
     cur_vers = get_os_version_package(package)
     if not cur_vers:
